@@ -1,10 +1,12 @@
 import React from "react";
-import { FaUser, FaLock, FaSignInAlt } from "react-icons/fa";
+import {  FaLock, FaSignInAlt, FaEnvelope } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 
 const Login = () => {
+
+  
   return (
     <>
     <Header/>
@@ -17,10 +19,10 @@ const Login = () => {
             Enter your details to continue your journey
           </p>
           <div className="mb-4 relative">
-            <FaUser className="absolute top-1/2 left-3 transform -translate-y-1/2 text-white/60" />
+            <FaEnvelope className="absolute top-1/2 left-3 transform -translate-y-1/2 text-white/60" />
             <input
-              type="text"
-              placeholder="Username"
+              type="email"
+              placeholder="email"
               className="w-full pl-10 pr-4 py-2 bg-black/30 border border-white/20 rounded-md placeholder-white/50"
             />
           </div>

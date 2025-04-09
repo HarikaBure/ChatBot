@@ -13,7 +13,7 @@ function Chat() {
 
   return (
     <>
-      <Header />
+      
       <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-start">
         <div className="w-full max-w-2xl mt-20 bg-gray-800 rounded-xl shadow-2xl flex flex-col h-[500px] overflow-hidden">
 

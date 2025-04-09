@@ -1,9 +1,43 @@
 import React from "react";
+import {useState} from 'react'
+import axios from 'axios'
+import { useNavigate } from "react-router-dom";
+
 import { FaUser, FaEnvelope, FaLock, FaUserPlus } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 const Register = () => {
+  const navigate = useNavigate(); 
+  const [user,setUser]=useState({
+    username:"",
+    email:"",
+    password:""
+
+  })
+  const handleChange=(e)=>{
+    setUser({...user,[e.target.name]:e.target.value})
+
+  }
+
+  const handleSubmit=(e)=>{
+    e.preventDefault();
+    axios.post('http://localhost:5000/register',user)
+    .then((res)=>{
+      console.log(res.data);
+      if(res)
+      {console.log("Full response:", res);
+        console.log("res.data:", res.data);
+        alert("user registered success");
+        navigate('/chat');
+      }
+
+    })
+    .catch((err)=>{
+      console.log(err);
+    })
+
+  }
   return (
     <>
     <Header/>
@@ -15,35 +49,51 @@ const Register = () => {
           <p className="text-sm text-gray-300 mb-6">
             Register to start your journey
           </p>
-          <div className="mb-4 relative">
-            <FaUser className="absolute top-1/2 left-3 transform -translate-y-1/2 text-white/60" />
-            <input
-              type="text"
-              placeholder="Username"
-              className="w-full pl-10 pr-4 py-2 bg-black/30 border border-white/20 rounded-md placeholder-white/50"
-            />
-          </div>
-          <div className="mb-4 relative">
-            <FaEnvelope className="absolute top-1/2 left-3 transform -translate-y-1/2 text-white/60" />
-            <input
-              type="email"
-              placeholder="Email"
-              className="w-full pl-10 pr-4 py-2 bg-black/30 border border-white/20 rounded-md placeholder-white/50"
-            />
-          </div>
-          <div className="mb-6 relative">
-            <FaLock className="absolute top-1/2 left-3 transform -translate-y-1/2 text-white/60" />
-            <input
-              type="password"
-              placeholder="Password"
-              className="w-full pl-10 pr-4 py-2 bg-black/30 border border-white/20 rounded-md placeholder-white/50"
-            />
-          </div>
-         <Link to='/chat'>
-         <button className="w-full bg-teal-500 hover:bg-teal-600 py-2 rounded-md font-medium flex items-center justify-center gap-2">
-            <FaUserPlus /> Register
-          </button>
-         </Link>
+          <form onSubmit={handleSubmit}>
+  <div className="mb-4 relative">
+    <FaUser className="absolute top-1/2 left-3 transform -translate-y-1/2 text-white/60" />
+    <input
+      type="text"
+      name="username"
+      placeholder="Username"
+      className="w-full pl-10 pr-4 py-2 bg-black/30 border border-white/20 rounded-md"
+      value={user.username}
+      onChange={handleChange}
+    />
+  </div>
+
+  <div className="mb-4 relative">
+    <FaEnvelope className="absolute top-1/2 left-3 transform -translate-y-1/2 text-white/60" />
+    <input
+      type="email"
+      name="email"
+      placeholder="Email"
+      className="w-full pl-10 pr-4 py-2 bg-black/30 border border-white/20 rounded-md placeholder-white/50"
+      value={user.email}
+      onChange={handleChange}
+    />
+  </div>
+
+  <div className="mb-6 relative">
+    <FaLock className="absolute top-1/2 left-3 transform -translate-y-1/2 text-white/60" />
+    <input
+      type="password"
+      name="password"
+      placeholder="Password"
+      className="w-full pl-10 pr-4 py-2 bg-black/30 border border-white/20 rounded-md placeholder-white/50"
+      value={user.password}
+      onChange={handleChange}
+    />
+  </div>
+
+  <button
+    type="submit"
+    className="w-full bg-teal-500 hover:bg-teal-600 py-2 rounded-md font-medium flex items-center justify-center gap-2"
+  >
+    <FaUserPlus /> Register
+  </button>
+</form>
+
           <p className="text-sm text-gray-400 mt-4 text-center">
             Already have an account?{" "}
             <Link

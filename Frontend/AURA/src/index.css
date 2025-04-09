@@ -13,3 +13,16 @@
 .animate-fade-in {
   animation: fade-in 0.5s ease-out forwards;
 }
+
+/* Autofill: Dark background, editable text */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px #0f1b2d inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Remove weird transition hack that blocks editing */
+input:-webkit-autofill:focus {
+  transition: none !important;
+}
