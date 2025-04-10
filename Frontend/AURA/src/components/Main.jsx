@@ -1,13 +1,19 @@
 // src/components/Main.jsx
 import React, { useState } from 'react';
 import { Bot, UserCircle2 } from 'lucide-react';
-import {Link} from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom';
 
 function Main() {
   const [isAnimating, setIsAnimating] = useState(false);
+  const navigate = useNavigate(); // Use useNavigate for navigation
 
   const handleInitialClick = () => {
     setIsAnimating(true);
+    // Set a timeout to reset the animation state and navigate
+    setTimeout(() => {
+      setIsAnimating(false);
+      navigate('/chat'); // Navigate to the chat page after animation
+    }, 2000); // Match this duration with your animation duration
   };
 
   return (
@@ -56,15 +62,12 @@ function Main() {
               </div>
             </div>
           </div>
-        <Link to='/login'>
-        <button
+          <button
             onClick={handleInitialClick}
             className="mt-8 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-8 py-3 rounded-full font-semibold text-lg hover:opacity-90 transition-all transform hover:scale-105 shadow-xl"
           >
             Begin Your Journey
           </button>
-        
-        </Link>
         </div>
 
         {/* Right Content */}

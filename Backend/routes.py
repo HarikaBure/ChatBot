@@ -38,16 +38,21 @@ def login():
 
     user = User.query.filter_by(email=email).first()
 
-    if user and check_password_hash(user.password_hash, password):
-        # Now you can access user.id
-        token = jwt.encode({
-            'user_id': user.id,  # This will work now
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
-        }, SECRET_KEY, algorithm='HS256')
-        
-        return jsonify({'message': 'Login successful', 'token': token, 'user': user.username}), 200
-    else:
-        return jsonify({'message': 'Invalid credentials'}), 401
+    if user is None:
+        # Email not found in the database
+        return jsonify({'message': 'Please register first.'}), 404
+
+    if not check_password_hash(user.password_hash, password):
+        # Password is incorrect
+        return jsonify({'message': 'Invalid credentials entered.'}), 401
+
+    # If email and password are correct, generate the token
+    token = jwt.encode({
+        'user_id': user.id,
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+    }, SECRET_KEY, algorithm='HS256')
+    
+    return jsonify({'message': 'Login successful', 'token': token, 'user': user.username}), 200
 
 # New decorator to protect routes
 def token_required(f):

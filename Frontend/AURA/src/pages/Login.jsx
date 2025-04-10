@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FaLock, FaSignInAlt, FaEnvelope } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from 'react-toastify';
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 
@@ -11,6 +12,11 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (!email || !password) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+
     const response = await fetch('http://localhost:5000/login', {
       method: 'POST',
       headers: {
@@ -21,9 +27,11 @@ const Login = () => {
     const data = await response.json();
     if (response.ok) {
       localStorage.setItem('token', data.token);
+      localStorage.setItem('username', data.user);
+      toast.success("Login successful!");
       navigate('/chat');
     } else {
-      alert(data.message);
+      toast.error(data.message);
     }
   };
 

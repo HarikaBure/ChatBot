@@ -13,13 +13,13 @@ function Chat() {
 
   return (
     <>
-      
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-start">
-        <div className="w-full max-w-2xl mt-20 bg-gray-800 rounded-xl shadow-2xl flex flex-col h-[500px] overflow-hidden">
+      <Header />
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-start ">
+        <div className="w-full max-w-2xl mt-20 bg-gray-800 rounded-xl shadow-2xl flex flex-col h-[500px] mt-[8%] overflow-hidden">
 
           {/* Chat Header */}
           <div className="p-4 bg-gradient-to-r from-teal-700 to-emerald-700 flex items-center gap-3 shadow-md">
-            <div className="bg-black/30 backdrop-blur-sm rounded-full p-2">
+            <div className="bg-black/30 backdrop-blur-sm rounded-full p-2 ">
               <Bot className="text-white w-5 h-5" />
             </div>
             <div>
