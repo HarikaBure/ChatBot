@@ -70,10 +70,10 @@ function FeaturesSection() {
     <section id="features" className="py-20 ">
       <div className="container mx-auto px-4 md:px-8 text-white">
         <div className="text-center mb-16">
-                <h2 className="text-4xl font-extrabold text-white drop-shadow-sm mb-4">How AURA Works</h2>
-                <p className="text-white/90 max-w-2xl mx-auto drop-shadow-sm">
-                    Our advanced AI uses emotional intelligence to understand your mood and preferences, delivering personalized movie recommendations.
-                </p>
+          <h2 className="text-4xl font-extrabold text-white drop-shadow-sm mb-4 tracking-wider">How AURA Works</h2>
+          <p className="text-white/90 max-w-2xl mx-auto drop-shadow-sm">
+            Our advanced AI uses emotional intelligence to understand your mood and preferences, delivering personalized movie recommendations.
+          </p>
         </div>
 
 

@@ -1,6 +1,12 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User
+import jwt
+import datetime
+from functools import wraps
+
+# Secret key for JWT
+SECRET_KEY = 'potti_the_kuyya'
 
 auth_blueprint = Blueprint('auth', __name__)
 @auth_blueprint.route('/', methods=['GET'])
@@ -33,6 +39,32 @@ def login():
     user = User.query.filter_by(email=email).first()
 
     if user and check_password_hash(user.password_hash, password):
-        return jsonify({'message': 'Login successful', 'user': user.username}), 200
+        # Now you can access user.id
+        token = jwt.encode({
+            'user_id': user.id,  # This will work now
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        }, SECRET_KEY, algorithm='HS256')
+        
+        return jsonify({'message': 'Login successful', 'token': token, 'user': user.username}), 200
     else:
         return jsonify({'message': 'Invalid credentials'}), 401
+
+# New decorator to protect routes
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 403
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            current_user = User.query.get(data['user_id'])
+        except:
+            return jsonify({'message': 'Token is invalid!'}), 403
+        return f(current_user, *args, **kwargs)
+    return decorated
+
+@auth_blueprint.route('/chat', methods=['GET'])
+@token_required
+def chat(current_user):
+    return jsonify({'message': f'Welcome to the chat, {current_user.username}!'}), 200

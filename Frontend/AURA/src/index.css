@@ -1,4 +1,10 @@
 @import "tailwindcss";
+
+/* Add font family */
+body {
+  font-family: 'Orbitron', sans-serif; /* Apply the new font */
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -26,3 +32,4 @@ input:-webkit-autofill {
 input:-webkit-autofill:focus {
   transition: none !important;
 }
+

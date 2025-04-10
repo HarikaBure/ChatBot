@@ -21,7 +21,7 @@ function Home() {
       />
 
       {/* Header - Full Width */}
-      <div className="w-full z-10 ">
+      <div className="w-screen z-10 ">
         <Header />
       </div>
 
