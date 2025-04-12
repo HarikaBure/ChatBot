@@ -17,7 +17,7 @@ function Main() {
   };
 
   return (
-    <div className="relative z-10 w-full max-w-6xl mt-16  "
+    <div className="relative z-10 w-full max-w-6xl mt-16  " id="main"
     // style={{
       //   backgroundImage: ` url('/wmremove-transformed.jpeg')`,
       //   backgroundSize: 'cover',

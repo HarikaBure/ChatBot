@@ -6,6 +6,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Chat from './pages/Chat';
+import Main from './components/Main';
+import FeaturesSection from './components/Features';
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -20,7 +22,10 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/main" element={<Main />} />
+        <Route path="/features" element={<FeaturesSection />} />
         <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
+
       </Routes>
     </Router>
   );

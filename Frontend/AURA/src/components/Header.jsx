@@ -55,7 +55,13 @@ function Header() {
           <span className="text-2xl font-bold tracking-wider">AURA</span>
         </Link>
 
+        <div className="hidden md:flex gap-6 text-lg font-medium">
+        <a href="#main" className="hover:text-teal-400 transition">About</a>
+         <a href="#features " className="hover:text-teal-400 transition">Features</a>
+         <a href="# " className="hover:text-teal-400 transition">Contact</a>
+         <a href="#" className="hover:text-teal-400 transition">Demo</a>
 
+        </div>
         {/* Right - Buttons */}
         <div className="flex items-center gap-4 text-md">
           {isLoggedIn ? (
