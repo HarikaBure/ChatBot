@@ -86,8 +86,8 @@ function FeaturesSection() {
               <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center mb-6">
                 {feature.icon}
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
-              <p className="text-white/70 mb-4">{feature.description}</p>
+              <h3 className="text-xl font-semibold text-white mb-3 cursor-pointer ">{feature.title}</h3>
+              <p className="text-white/70 mb-4 cursor-pointer">{feature.description}</p>
               <a href="#" className="text-teal-400 flex items-center gap-1 group">
                 Learn more
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

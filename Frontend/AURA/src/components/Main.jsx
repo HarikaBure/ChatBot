@@ -39,7 +39,7 @@ function Main() {
               </span>
             </div>
           </div>
-          <p className="text-white/90 text-xl mb-8 max-w-xl">
+          <p className="text-white/90 text-xl mb-8 max-w-2xl">
             Your emotion-aware AI companion that understands how you feel and curates perfect movie recommendations.
           </p>
           <div className="space-y-4">

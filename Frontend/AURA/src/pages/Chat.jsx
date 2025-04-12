@@ -26,7 +26,7 @@ function Chat() {
         headers: {
           "Content-Type": "application/json",
           Authorization: token,
-        },
+        },withCredentials: true,
         body: JSON.stringify({ message }),
       });
 
@@ -50,6 +50,7 @@ function Chat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+  
 
   return (
     <>

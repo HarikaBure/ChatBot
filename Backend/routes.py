@@ -1,17 +1,18 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify,session
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User
 import jwt
 import datetime
 from functools import wraps
-
-# Secret key for JWT
-SECRET_KEY = 'raur'
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
+
 # Secret key for JWT
-SECRET_KEY = 'your_secret_key_here'  # Replace with a secure key
+SECRET_KEY = 'raur'
+
+# Secret key for JWT
+# SECRET_KEY = 'your_secret_key_here'  # Replace with a secure key
 
 auth_blueprint = Blueprint('auth', __name__) 
 
@@ -30,6 +31,7 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto",
 )
 
+
 def generate_response(user_input):
     prompt = f"<|im_start|>user\n{user_input}<|im_end|>\n<|im_start|>assistant\n"
     inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
@@ -37,7 +39,7 @@ def generate_response(user_input):
     with torch.inference_mode():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=100,
+            max_new_tokens=500,
             do_sample=True,
             temperature=0.7,
             top_p=0.9,
@@ -123,4 +125,3 @@ def chat(current_user):
 
     response = generate_response(user_message)
     return jsonify({"response": response})
-

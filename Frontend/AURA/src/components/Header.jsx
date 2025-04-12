@@ -45,7 +45,7 @@ function Header() {
   }, []);
 
   return (
-    <header className={`fixed top-0 w-full z-50 backdrop-blur-lg shadow-md border-b border-white/20 transition-transform duration-300 ${visible ? 'translate-y-0' : '-translate-y-full'} bg-white/20`}>
+    <header className={`fixed top-0 w-full z-50 backdrop-blur-lg shadow-sm border-b border-white/20 transition-transform duration-300 ${visible ? 'translate-y-0' : '-translate-y-full'} bg-blue`}>
       <nav className="flex items-center justify-between px-6 py-4 text-white">
         {/* Left - Logo */}
         <Link to="/" className="flex items-center gap-2">
@@ -55,12 +55,6 @@ function Header() {
           <span className="text-2xl font-bold tracking-wider">AURA</span>
         </Link>
 
-        {/* Center - Links */}
-        <div className="hidden md:flex gap-6 text-md">
-          <a href="#features" className="hover:text-teal-400 transition">Features</a>
-          <a href="#testimonials" className="hover:text-teal-400 transition">Testimonials</a>
-          <a href="#get-started" className="hover:text-teal-400 transition">Get Started</a>
-        </div>
 
         {/* Right - Buttons */}
         <div className="flex items-center gap-4 text-md">
