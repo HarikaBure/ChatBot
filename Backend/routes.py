@@ -6,6 +6,9 @@ import datetime
 from functools import wraps
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from sentence_transformers import SentenceTransformer, util
+from collections import deque
+import numpy as np
 
 # Secret key for JWT
 SECRET_KEY = 'raur'
@@ -24,6 +27,82 @@ model = AutoModelForCausalLM.from_pretrained(
     quantization_config=bnb_config,
     device_map="auto",
 )
+
+intent_model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+embedding_model = SentenceTransformer('all-mpnet-base-v2')
+emotion_model = SentenceTransformer('SamLowe/roberta-base-go_emotions')
+EMOTION_LABELS = [
+    'admiration', 'amusement', 'anger', 'annoyance', 'approval', 'caring',
+    'confusion', 'curiosity', 'desire', 'disappointment', 'disapproval',
+    'disgust', 'embarrassment', 'excitement', 'fear', 'gratitude', 'grief',
+    'joy', 'love', 'nervousness', 'neutral', 'optimism', 'pride',
+    'realization', 'relief', 'remorse', 'sadness', 'surprise'
+]
+mood_intent_phrases = [
+    "what's my mood", "how am I feeling", "can you detect my emotion",
+    "tell me my emotion", "what do you think my mood is", "how do I feel",
+    "can you tell my mood", "analyze my emotions", "what emotion am I showing",
+    "read my feelings", "guess my current mood", "how would you describe my state",
+    "what's my emotional state", "detect my vibe"
+]
+
+# Pre-compute embeddings (768-dimensional vectors)
+mood_embeddings = intent_model.encode(mood_intent_phrases, convert_to_tensor=True)
+def is_mood_query(prompt: str, threshold: float = 0.72) -> bool:
+    query_embedding = intent_model.encode(prompt, convert_to_tensor=True)
+    similarities = util.cos_sim(query_embedding, mood_embeddings)
+    
+    top_values, top_indices = similarities[0].topk(2)
+    top_score = top_values[0].item()
+    second_score = top_values[1].item()
+    
+    return top_score > threshold
+def analyze_emotion(texts):
+    # Get embeddings for all texts
+    embeddings = emotion_model.encode(texts, convert_to_tensor=True)
+
+    # Average all embeddings (torch tensor)
+    avg_embedding = embeddings.mean(dim=0)
+
+    # Get emotion label embeddings
+    emotion_embeddings = emotion_model.encode(EMOTION_LABELS, convert_to_tensor=True)
+
+    # Compare using cosine similarity (unsqueeze to add batch dim)
+    similarities = util.cos_sim(avg_embedding.unsqueeze(0), emotion_embeddings)
+    print("similarities[0] shape:", similarities[0].shape)
+
+    # Get top 3 emotions
+    top_values, top_indices = similarities[0].flatten().topk(3)
+
+    return {
+        'dominant_emotion': EMOTION_LABELS[top_indices[0].item()],
+        'confidence': top_values[0].item(),
+        'secondary_emotions': [
+            (EMOTION_LABELS[top_indices[i].item()], top_values[i].item())
+            for i in range(1, 3)
+        ]
+    }
+
+def detect_user_mood(prompt_list):
+    """Full pipeline for mood detection"""
+    analysis = analyze_emotion(prompt_list)
+
+    # Simplified mood map for chatbot usage
+    mood_map = {
+        'anger': 'angry',
+        'joy': 'happy',
+        'sadness': 'sad',
+        'fear': 'anxious',
+        'surprise': 'excited',
+        'neutral': 'neutral'
+    }
+
+    dominant = analysis['dominant_emotion']
+    mood = mood_map.get(dominant, dominant)  # Fallback to raw label if not mapped
+
+    return mood
+
+
 
 def generate_response(messages):
     # Format all messages for the model
@@ -246,24 +325,30 @@ def chat(current_user):
         content=user_message
     )
     db.session.add(user_chat_message)
-    
-    # Get all previous messages in this chat for context
-    messages = []
-    for msg in ChatMessage.query.filter_by(chat_history_id=chat_id).order_by(ChatMessage.timestamp).all():
+    if is_mood_query(user_message):
+           chats = ChatMessage.query.filter_by(chat_history_id=chat_id).order_by(ChatMessage.timestamp.desc()).limit(8).all()
+           messages = [chat.content for chat in chats if chat.role == 'user']
+           emotion = detect_user_mood(messages)
+           ai_response=f'You seem to be feeling {emotion}'
+           return jsonify({"response": f"You seem to be feeling {emotion}", "emotion": emotion})
+    else:
+        # Get all previous messages in this chat for context
+        messages = []
+        for msg in ChatMessage.query.filter_by(chat_history_id=chat_id).order_by(ChatMessage.timestamp).all():
+            messages.append({
+                'role': msg.role,
+                'content': msg.content
+            })
+        
+        # Add the current user message
         messages.append({
-            'role': msg.role,
-            'content': msg.content
+            'role': 'user',
+            'content': user_message
         })
-    
-    # Add the current user message
-    messages.append({
-        'role': 'user',
-        'content': user_message
-    })
-    
-    # Generate response based on full conversation history
-    ai_response = generate_response(messages)
-    
+        
+        # Generate response based on full conversation history
+        ai_response = generate_response(messages)
+        
     # Save assistant response
     assistant_chat_message = ChatMessage(
         chat_history_id=chat_id,
