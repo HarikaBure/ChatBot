@@ -72,7 +72,7 @@ function Header() {
                 </div>
                 <span className="text-lg font-semibold">{username}</span> {/* Enhanced font size */}
               </div>
-              <button onClick={handleLogout} className="hover:text-teal-400 transition">Sign Out</button>
+              <button onClick={handleLogout} className="hover:text-teal-400 transition cursor-pointer ">Sign Out</button>
             </>
           ) : (
             <>

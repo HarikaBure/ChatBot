@@ -1,20 +1,14 @@
-from flask import Blueprint, request, jsonify,session
+from flask import Blueprint, request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, User
+from models import db, User, ChatHistory, ChatMessage
 import jwt
 import datetime
 from functools import wraps
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-
 # Secret key for JWT
 SECRET_KEY = 'raur'
-
-# Secret key for JWT
-# SECRET_KEY = 'your_secret_key_here'  # Replace with a secure key
-
-auth_blueprint = Blueprint('auth', __name__) 
 
 # Load model and tokenizer once on app start
 model_name = "teknium/OpenHermes-2.5-Mistral-7B"
@@ -31,11 +25,19 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto",
 )
 
-
-def generate_response(user_input):
-    prompt = f"<|im_start|>user\n{user_input}<|im_end|>\n<|im_start|>assistant\n"
+def generate_response(messages):
+    # Format all messages for the model
+    prompt = ""
+    for message in messages:
+        if message['role'] == 'user':
+            prompt += f"<|im_start|>user\n{message['content']}<|im_end|>\n"
+        else:
+            prompt += f"<|im_start|>assistant\n{message['content']}<|im_end|>\n"
+    
+    # Add the final assistant prefix for the response
+    prompt += "<|im_start|>assistant\n"
+    
     inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
-
     with torch.inference_mode():
         outputs = model.generate(
             **inputs,
@@ -45,32 +47,30 @@ def generate_response(user_input):
             top_p=0.9,
             eos_token_id=tokenizer.eos_token_id,
         )
-
     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
     return response.split("assistant\n")[-1].strip()
 
-
-
 auth_blueprint = Blueprint('auth', __name__)
+
 @auth_blueprint.route('/', methods=['GET'])
 def root():
     return jsonify({'message': 'Sending the request'}), 200
+
 @auth_blueprint.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
     username = data['username']
     email = data['email']
     password = data['password'] 
-
+    
     if User.query.filter_by(email=email).first():
         return jsonify({'message': 'User already exists'}), 409
-
+    
     hashed_password = generate_password_hash(password) 
-
     new_user = User(username=username, email=email, password_hash=hashed_password)
     db.session.add(new_user)
     db.session.commit()
-
+    
     return jsonify({'message': 'User registered successfully'}), 201 
 
 @auth_blueprint.route('/login', methods=['POST'])
@@ -78,17 +78,16 @@ def login():
     data = request.get_json()
     email = data['email']
     password = data['password']
-
+    
     user = User.query.filter_by(email=email).first()
-
     if user is None:
         # Email not found in the database
         return jsonify({'message': 'Please register first.'}), 404
-
+    
     if not check_password_hash(user.password_hash, password):
         # Password is incorrect
         return jsonify({'message': 'Invalid credentials entered.'}), 401
-
+    
     # If email and password are correct, generate the token
     token = jwt.encode({
         'user_id': user.id,
@@ -112,16 +111,174 @@ def token_required(f):
         return f(current_user, *args, **kwargs) 
     return decorated 
 
+# Get all chat histories for a user
+@auth_blueprint.route('/chat-histories', methods=['GET'])
+@token_required
+def get_chat_histories(current_user):
+    chat_histories = ChatHistory.query.filter_by(user_id=current_user.id).order_by(ChatHistory.updated_at.desc()).all()
+    
+    histories = []
+    for history in chat_histories:
+        histories.append({
+            'id': history.id,
+            'title': history.title,
+            'created_at': history.created_at.isoformat(),
+            'updated_at': history.updated_at.isoformat()
+        })
+    
+    return jsonify({'chat_histories': histories}), 200
 
+# Create a new chat history
+@auth_blueprint.route('/chat-histories', methods=['POST'])
+@token_required
+def create_chat_history(current_user):
+    data = request.get_json()
+    title = data.get('title', f"Chat {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M')}")
+    
+    new_chat = ChatHistory(user_id=current_user.id, title=title)
+    db.session.add(new_chat)
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Chat history created', 
+        'chat_history': {
+            'id': new_chat.id,
+            'title': new_chat.title,
+            'created_at': new_chat.created_at.isoformat(),
+            'updated_at': new_chat.updated_at.isoformat()
+        }
+    }), 201
 
+# Get a specific chat history with messages
+@auth_blueprint.route('/chat-histories/<int:chat_id>', methods=['GET'])
+@token_required
+def get_chat_history(current_user, chat_id):
+    chat_history = ChatHistory.query.filter_by(id=chat_id, user_id=current_user.id).first()
+    
+    if not chat_history:
+        return jsonify({'message': 'Chat history not found'}), 404
+    
+    messages = []
+    for message in ChatMessage.query.filter_by(chat_history_id=chat_id).order_by(ChatMessage.timestamp).all():
+        messages.append({
+            'id': message.id,
+            'role': message.role,
+            'content': message.content,
+            'timestamp': message.timestamp.isoformat()
+        })
+    
+    return jsonify({
+        'chat_history': {
+            'id': chat_history.id,
+            'title': chat_history.title,
+            'created_at': chat_history.created_at.isoformat(),
+            'updated_at': chat_history.updated_at.isoformat(),
+            'messages': messages
+        }
+    }), 200
 
+# Update chat history title
+@auth_blueprint.route('/chat-histories/<int:chat_id>', methods=['PUT'])
+@token_required
+def update_chat_history(current_user, chat_id):
+    chat_history = ChatHistory.query.filter_by(id=chat_id, user_id=current_user.id).first()
+    
+    if not chat_history:
+        return jsonify({'message': 'Chat history not found'}), 404
+    
+    data = request.get_json()
+    if 'title' in data:
+        chat_history.title = data['title']
+        db.session.commit()
+    
+    return jsonify({
+        'message': 'Chat history updated',
+        'chat_history': {
+            'id': chat_history.id,
+            'title': chat_history.title,
+            'updated_at': chat_history.updated_at.isoformat()
+        }
+    }), 200
+
+# Delete a chat history
+@auth_blueprint.route('/chat-histories/<int:chat_id>', methods=['DELETE'])
+@token_required
+def delete_chat_history(current_user, chat_id):
+    chat_history = ChatHistory.query.filter_by(id=chat_id, user_id=current_user.id).first()
+    
+    if not chat_history:
+        return jsonify({'message': 'Chat history not found'}), 404
+    
+    db.session.delete(chat_history)
+    db.session.commit()
+    
+    return jsonify({'message': 'Chat history deleted'}), 200
+
+# Send a chat message and get a response
 @auth_blueprint.route('/chat', methods=['POST'])
 @token_required
 def chat(current_user):
     data = request.get_json()
     user_message = data.get('message', '')
+    chat_id = data.get('chat_id')
+    
     if not user_message:
         return jsonify({"error": "Message is required"}), 400
-
-    response = generate_response(user_message)
-    return jsonify({"response": response})
+    
+    # If no chat_id is provided, create a new chat history
+    if not chat_id:
+        # Create a title from the first message (limit to 50 chars)
+        title = user_message[:50] + ('...' if len(user_message) > 50 else '')
+        new_chat = ChatHistory(user_id=current_user.id, title=title)
+        db.session.add(new_chat)
+        db.session.flush()  # Get the ID without committing
+        chat_id = new_chat.id
+    else:
+        # Verify chat history exists and belongs to user
+        chat_history = ChatHistory.query.filter_by(id=chat_id, user_id=current_user.id).first()
+        if not chat_history:
+            return jsonify({'message': 'Chat history not found'}), 404
+    
+    # Save user message
+    user_chat_message = ChatMessage(
+        chat_history_id=chat_id,
+        role='user',
+        content=user_message
+    )
+    db.session.add(user_chat_message)
+    
+    # Get all previous messages in this chat for context
+    messages = []
+    for msg in ChatMessage.query.filter_by(chat_history_id=chat_id).order_by(ChatMessage.timestamp).all():
+        messages.append({
+            'role': msg.role,
+            'content': msg.content
+        })
+    
+    # Add the current user message
+    messages.append({
+        'role': 'user',
+        'content': user_message
+    })
+    
+    # Generate response based on full conversation history
+    ai_response = generate_response(messages)
+    
+    # Save assistant response
+    assistant_chat_message = ChatMessage(
+        chat_history_id=chat_id,
+        role='assistant',
+        content=ai_response
+    )
+    db.session.add(assistant_chat_message)
+    
+    # Update the chat history's updated_at timestamp
+    chat_history = ChatHistory.query.get(chat_id)
+    chat_history.updated_at = datetime.datetime.utcnow()
+    
+    db.session.commit()
+    
+    return jsonify({
+        "response": ai_response,
+        "chat_id": chat_id
+    })
