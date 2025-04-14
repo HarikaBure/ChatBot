@@ -9,6 +9,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from sentence_transformers import SentenceTransformer, util
 from collections import deque
 import numpy as np
+import pandas as pd
 
 # Secret key for JWT
 SECRET_KEY = 'raur'
@@ -45,9 +46,43 @@ mood_intent_phrases = [
     "read my feelings", "guess my current mood", "how would you describe my state",
     "what's my emotional state", "detect my vibe"
 ]
+movie_intent_phrases = [
+    "want movie recommendations", "I would like to watch movies", "can you recommend a movie",
+    "suggest a movie for me", "what should I watch", "recommend a movie", "give me movie suggestions",
+    "looking for a movie to watch", "any good movie suggestions", "help me pick a movie", "movie suggestions please",'give me movie recommendations',
+    "I need a movie to watch", "what's a good movie to watch", "can you suggest a film",
+    "what's a good film to watch", "I want to watch a movie", "movie ideas", "movie time",
+    "I need a film to watch", "what movie should I see", "movie recommendations please",
+    "what's a good movie", "I want to see a film", "can you suggest a movie for me",
+    "what's a good film", "I want to watch a film", "movie suggestions for me",
+    "I need a movie recommendation", "what should I see", "movie recommendations for me"
+]
+emotion_genre_map = {
+    'happy': ['comedy', 'romance', 'family'],
+    'sad': ['drama', 'family', 'biography'],
+    'angry': ['action', 'thriller', 'crime'],
+    'neutral': ['sci-fi', 'comedy', 'romance'],
+    'exhausted': ['family', 'comedy', 'drama', 'romance'],
+    'motivation':['motivation','patriotic','drama','sci-fi']
+}
 
 # Pre-compute embeddings (768-dimensional vectors)
 mood_embeddings = intent_model.encode(mood_intent_phrases, convert_to_tensor=True)
+
+# Pre-compute embeddings for movie-related queries
+movie_embeddings = intent_model.encode(movie_intent_phrases, convert_to_tensor=True)
+
+def is_movie_query(prompt: str, threshold: float = 0.72) -> bool:
+    query_embedding = intent_model.encode(prompt, convert_to_tensor=True)
+    similarities = util.cos_sim(query_embedding, movie_embeddings)
+    
+    top_values, top_indices = similarities[0].topk(2)
+    top_score = top_values[0].item()
+    second_score = top_values[1].item()
+    
+    return top_score > threshold
+
+
 def is_mood_query(prompt: str, threshold: float = 0.72) -> bool:
     query_embedding = intent_model.encode(prompt, convert_to_tensor=True)
     similarities = util.cos_sim(query_embedding, mood_embeddings)
@@ -94,7 +129,13 @@ def detect_user_mood(prompt_list):
         'sadness': 'sad',
         'fear': 'anxious',
         'surprise': 'excited',
-        'neutral': 'neutral'
+        'neutral': 'neutral',
+        'optimism': 'happy',
+        'admiration': 'happy',
+        'amusement': 'happy',
+        'disappointment': 'sad',
+        'disapproval': 'angry',
+        'curiousity': 'neutral'
     }
 
     dominant = analysis['dominant_emotion']
@@ -103,6 +144,36 @@ def detect_user_mood(prompt_list):
     return mood
 
 
+#Emotion mapping
+def map_emotion(genres):
+    for emotion, genre_list in emotion_genre_map.items():
+        if any(genre in genre_list for genre in genres):
+            return emotion
+    return 'neutral' 
+# Load movie dataset
+df = pd.read_excel('Movie_DataSet.xlsx')
+df['Genre'] = df['Genre'].fillna('').apply(lambda x: [g.lower().strip() for g in str(x).split() if g])
+df['Emotion'] = df['Genre'].apply(map_emotion)
+
+
+def recommend_movies(emotion, top_n=5):
+    relevant_movies = df[df['Emotion'] == emotion]
+    return relevant_movies[['Title', 'Genre']].sample(n=min(top_n, len(relevant_movies)))
+
+
+def detect_emotion(text):
+    detected_emotion = analyze_emotion(text)
+
+    emotion_mapping = {
+        'admiration':'happy', 'amusement':'happy', 'anger':'angry', 'annoyance':'angry', 'approval':'neutral', 'caring':'neutral',
+    'confusion':'motivation', 'curiosity':'neutral', 'desire':'neutral', 'disappointment':'exhausted', 'disapproval':'angry',
+    'disgust':'angry', 'embarrassment':'sad', 'excitement':'happy', 'fear':'exhausted', 'gratitude':'happy', 'grief':'sad',
+    'joy':'happy', 'love':'happy', 'nervousness':'fear', 'neutral':'neutral', 'optimism':'happy', 'pride':'happy',
+    'realization':'neutral', 'relief':'neutral', 'remorse':'sad', 'sadness':'sad', 'surprise' :'neutral'       
+    }
+    dominant = detected_emotion['dominant_emotion']
+    movies_recommended=recommend_movies(emotion_mapping.get(dominant, 'neutral'))
+    return movies_recommended
 
 def generate_response(messages):
     # Format all messages for the model
@@ -330,7 +401,15 @@ def chat(current_user):
            messages = [chat.content for chat in chats if chat.role == 'user']
            emotion = detect_user_mood(messages)
            ai_response=f'You seem to be feeling {emotion}'
-           return jsonify({"response": f"You seem to be feeling {emotion}", "emotion": emotion})
+           
+    elif is_movie_query(user_message):
+        chats = ChatMessage.query.filter_by(chat_history_id=chat_id).order_by(ChatMessage.timestamp.desc()).limit(8).all()
+        messages = [chat.content for chat in chats if chat.role == 'user']
+        recommended_movies=detect_emotion(messages)
+        movie_list = recommended_movies[['Title', 'Genre']].to_dict(orient='records')
+        formatted_movies = '\n'.join([f"{i+1}. {movie['Title']} ({', '.join(movie['Genre'])})" for i, movie in enumerate(movie_list)])
+        ai_response = f"Based on your mood, I recommend the following movies:\n\n{formatted_movies}"
+
     else:
         # Get all previous messages in this chat for context
         messages = []
